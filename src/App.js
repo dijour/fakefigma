@@ -10,7 +10,9 @@ class App extends Component {
   constructor() {
     super();
     this.state = {
-      lines: new List(),
+      rects: new List(),
+      //outline of new rectangle, only used while mouseDown
+      ghostRect: new List(),
       undoList: new List(),
       colors: new List(),
       undoColors: new List(),
@@ -43,7 +45,8 @@ class App extends Component {
     if (!this.state.canDraw) return;
     const point = this.relativeCoordinatesForEvent(touchEvent.touches[0]);
     this.setState(prevState => ({
-      lines: prevState.lines.push(new List([point])),
+      rects: prevState.rects.push(new List([point])),
+      ghostRect: prevState.rects.push(new List([point])),
       isDrawing: true,
       colors: this.state.colors.push(this.state.drawColor),
       widths: this.state.widths.push(this.state.strokeWidth)
@@ -55,7 +58,8 @@ class App extends Component {
     if (!this.state.canDraw) return;
     const point = this.relativeCoordinatesForEvent(mouseEvent);
     this.setState(prevState => ({
-      lines: prevState.lines.push(new List([point])),
+      rects: prevState.rects.push(new List([point])),
+      ghostRect: prevState.rects.push(new List([point])),
       isDrawing: true,
       colors: this.state.colors.push(this.state.drawColor),
       widths: this.state.widths.push(this.state.strokeWidth)
@@ -63,13 +67,14 @@ class App extends Component {
   };
 
   handleTouchMove = touchEvent => {
-    if (!this.state.isDrawing) {
+    
+    if (!this.state.isDrawing || !this.state.canDraw) {
       return;
     }
     const point = this.relativeCoordinatesForEvent(touchEvent.touches[0]);
     this.setState(
       prevState => ({
-        lines: prevState.lines.updateIn([prevState.lines.size - 1], line =>
+        ghostRect: prevState.rects.updateIn([prevState.rects.size - 1], line =>
           line.push(point)
         )
       }));
@@ -77,23 +82,32 @@ class App extends Component {
 
   // keep building up line points
   handleMouseMove = mouseEvent => {
-    if (!this.state.isDrawing) {
+    if (!this.state.isDrawing || !this.state.canDraw) {
       return;
     }
     const point = this.relativeCoordinatesForEvent(mouseEvent);
     this.setState(
       prevState => ({
-        lines: prevState.lines.updateIn([prevState.lines.size - 1], line =>
+        ghostRect: prevState.rects.updateIn([prevState.rects.size - 1], line =>
           line.push(point)
         )
       }));
   };
 
   // end drawing
-  handleMouseUp = () => {
-    this.setState({
-      isDrawing: false
-    });
+  handleMouseUp = mouseEvent => {
+    if (!this.state.isDrawing || !this.state.canDraw) {
+      return
+    }
+    const point = this.relativeCoordinatesForEvent(mouseEvent);
+    this.setState(
+      prevState => ({
+        ghostRect: new List(),
+        isDrawing: false,
+        rects: prevState.rects.updateIn([prevState.rects.size - 1], line =>
+          line.push(point)
+        )
+      }));
   };
 
   handleChange = e => {
@@ -110,13 +124,13 @@ class App extends Component {
   }
 
   undo = () => {
-    if (this.state.lines.size === 0) {
+    if (this.state.rects.size === 0) {
       return;
     }
     this.setState(
       prevState => ({
-        undoList: prevState.undoList.push(prevState.lines.last()),
-        lines: prevState.lines.delete(-1),
+        undoList: prevState.undoList.push(prevState.rects.last()),
+        rects: prevState.rects.delete(-1),
         undoColors: prevState.undoColors.push(prevState.colors.last()),
         colors: prevState.colors.delete(-1),
         undoWidths: prevState.undoWidths.push(prevState.widths.last()),
@@ -130,7 +144,7 @@ class App extends Component {
       return;
     }
     this.setState(prevState => ({
-      lines: prevState.lines.push(prevState.undoList.last()),
+      rects: prevState.rects.push(prevState.undoList.last()),
       undoList: prevState.undoList.delete(-1),
       colors: prevState.colors.push(prevState.undoColors.last()),
       undoColors: prevState.undoColors.delete(-1),
@@ -140,13 +154,13 @@ class App extends Component {
   };
 
   clear = () => {
-    if (this.state.lines.size === 0) {
+    if (this.state.rects.size === 0) {
       return;
     }
     this.setState(
       prevState => ({
-        undoList: this.state.lines,
-        lines: new List()
+        undoList: this.state.rects,
+        rects: new List()
       })
     );
   };
@@ -220,7 +234,7 @@ class App extends Component {
     return (
       <div>
           <div className="pageContainer">
-            <h3 className="title">Draw something and send it to the LED display!</h3>
+            <h3 className="title">Draw some boxes!</h3>
             <div className="buttonBox">
               <button className="button" onClick={e => this.undo(e)}>
                 Undo
@@ -248,9 +262,11 @@ class App extends Component {
               onTouchMove={this.handleTouchMove}
             >
               <Drawing
-                lines={this.state.lines}
+                rects={this.state.rects}
+                ghostRect={this.state.ghostRect}
                 colors={this.state.colors}
                 widths={this.state.widths}
+                isDrawing={this.state.isDrawing}
               />
             </div>
             <div className="effectContainerBox">
@@ -280,22 +296,38 @@ class App extends Component {
   }
 }
 
-function Drawing({ lines, colors, widths }) {
+function Drawing({ rects, ghostRect, colors, widths, isDrawing }) {
   return (
     <svg className="drawing">
-      {lines.map((line, index) => (
-        <DrawingRect
-          key={index}
-          line={line}
-          color={colors.get(index)}
-          strokeWidth={widths.get(index)}
-        />
-      ))}
+      {isDrawing &&
+        
+        ghostRect.map((line, index) => (
+          <DrawingRect
+            key={index}
+            index={index}
+            line={line}
+            color={"green"}
+            type={"outline"}
+            strokeWidth={widths.get(index)}
+          />
+        ))
+        }
+        
+        {rects.map((line, index) => (
+          <DrawingRect
+            key={index}
+            index={index}
+            line={line}
+            color={colors.get(index)}
+            strokeWidth={widths.get(index)}
+          />
+        ))}
+
     </svg>
   );
 }
 
-function DrawingRect({ line, color, strokeWidth }) {
+function DrawingRect({ index, line, color, strokeWidth, type }) {
   let firstX = Math.min(line.first().get("x"), line.last().get("x"))
   let firstY = Math.min(line.first().get("y"), line.last().get("y"))
   let lastX = Math.max(line.first().get("x"), line.last().get("x"))
@@ -311,7 +343,10 @@ function DrawingRect({ line, color, strokeWidth }) {
       width={lastX-firstX}
       height={lastY-firstY}
       draggable="true"
-      onLoad={e => dragListener(e)}
+      onLoad={dragListener}
+      fillOpacity={type === "outline" ? 0 : 1}
+      strokeDasharray={type === "outline" ? "5,5" : "0,0"}
+      onClick={e => console.log("clicked" + index)}
       style={{ stroke: `${color}`, strokeWidth: `${strokeWidth}` }}
     />
   );
@@ -322,7 +357,7 @@ var selectedElement, offset, transform;
 
 function dragListener(e) {
   console.log('loaded')
-  // e.preventDefault()
+  e.preventDefault()
   let svg = e.target;
 
   console.log(e)
@@ -332,6 +367,8 @@ function dragListener(e) {
   // svg.addEventListener('mouseup', endDrag);
   // svg.addEventListener('mouseleave', endDrag);
 
+  // need mouse move events to be on the window, not on the element
+  // if mouse moves too quickly, then this object will lose track
   function startDrag(e) {
     console.log("hello")
     if (e.target.classList.contains('rect')) {
