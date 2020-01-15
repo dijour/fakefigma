@@ -116,7 +116,7 @@ class App extends Component {
         }));
       return
     }
-    
+
     // if all conditions satisfied, commit the box to state and wipe the ghostRect outline
     this.setState(
       prevState => ({
@@ -354,6 +354,7 @@ function DrawingRect({ index, line, color, strokeWidth, type }) {
   // http://www.petercollingridge.co.uk/tutorials/svg/interactive/dragging/
   // Draggable code adapted from the above source.
   return (
+    <>
     <rect
       className="rect"
       x={firstX}
@@ -367,6 +368,8 @@ function DrawingRect({ index, line, color, strokeWidth, type }) {
       onClick={e => console.log("clicked" + index)}
       style={{ stroke: `${color}`, strokeWidth: `${strokeWidth}` }}
     />
+    <text x={(firstX)} y={firstY + 15} font-family="Verdana" font-size="15" fill="white">{`Rectangle ${index}`}</text>
+    </>
   );
 }
 
