@@ -99,7 +99,25 @@ class App extends Component {
     if (!this.state.isDrawing || !this.state.canDraw) {
       return
     }
+
     const point = this.relativeCoordinatesForEvent(mouseEvent);
+
+    let anchorPoint = this.state.ghostRect.last().first();
+    let finalPoint = this.state.ghostRect.last().last();
+
+    //ensure no zero width or height boxes
+    if (this.state.ghostRect.last().toJS().length < 2 || anchorPoint.get('x') === finalPoint.get('x') || anchorPoint.get('y') === finalPoint.get('y')) {
+      alert("Cannot create zero width or zero height boxes!")
+      this.setState(
+        prevState => ({
+          ghostRect: new List(),
+          rects: prevState.rects.delete(-1),
+          isDrawing: false
+        }));
+      return
+    }
+    
+    // if all conditions satisfied, commit the box to state and wipe the ghostRect outline
     this.setState(
       prevState => ({
         ghostRect: new List(),
@@ -107,7 +125,7 @@ class App extends Component {
         rects: prevState.rects.updateIn([prevState.rects.size - 1], line =>
           line.push(point)
         )
-      }));
+      }), () => console.log('test', this.state.ghostRect));
   };
 
   handleChange = e => {
