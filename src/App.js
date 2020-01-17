@@ -3,7 +3,6 @@ import "./App.scss";
 // import styles from "./draw.module.scss";
 import { List, Map } from "immutable";
 import { HuePicker } from "react-color";
-import cn from "classnames";
 
 // preliminary code thanks to: https://codepen.io/philipp-spiess/pen/WpQpGr
 class App extends Component {
@@ -57,8 +56,8 @@ class App extends Component {
 
   // start drawing
   handleMouseDown = mouseEvent => {
-    const point = this.relativeCoordinatesForEvent(mouseEvent);
     if (this.state.canDraw) {
+      const point = this.relativeCoordinatesForEvent(mouseEvent);
       this.setState(prevState => ({
         rects: prevState.rects.push(new List([point])),
         ghostRect: prevState.rects.push(new List([point])),
@@ -67,15 +66,9 @@ class App extends Component {
         widths: this.state.widths.push(this.state.strokeWidth)
       }));
     }
-
-    else {
-      const point = this.relativeCoordinatesForEvent(mouseEvent);
-    }
-
   };
 
   handleTouchMove = touchEvent => {
-    
     if (!this.state.isDrawing || !this.state.canDraw) {
       return;
     }
@@ -94,8 +87,13 @@ class App extends Component {
 
     if (this.state.selected && !this.state.canDraw && !this.state.isDrawing) {
       console.log("selected is: ", this.state.selected)
+      let text = this.state.selected.nextSibling;
+      console.log(text)
       this.state.selected.setAttribute("x", point.get('x')-this.state.offset.x)
       this.state.selected.setAttribute("y", point.get('y')-this.state.offset.y)
+      console.log(((point.get('x')-this.state.offset.x)+parseInt(this.state.selected.getAttribute("width")))/2)
+      text.setAttribute("x", (parseInt(this.state.selected.getAttribute('x'))+parseInt(this.state.selected.getAttribute("width")))/2)
+      text.setAttribute("y", parseInt(this.state.selected.getAttribute('y'))+15)
     }
 
     if (!this.state.isDrawing || !this.state.canDraw) {
@@ -113,6 +111,7 @@ class App extends Component {
   handleMouseUp = mouseEvent => {
 
     if (this.state.selected && !this.state.canDraw && !this.state.isDrawing) {
+      this.state.selected.setAttribute("fill", "black")
       this.setState({
         selected: null,
         offset: {}
@@ -165,7 +164,6 @@ class App extends Component {
   }
 
   updateSelection = (e) => {
-    console.log(e.target)
     let mouse = this.relativeCoordinatesForEvent(e);
     let offset = {x: mouse.get('x'), y: mouse.get('y')}
     offset.x -= parseFloat(e.target.getAttributeNS(null, "x"));
@@ -299,6 +297,13 @@ class App extends Component {
                 </div>
                 <div className="effectContainerBox">
                   <div>
+                    <label>Fill Color</label>
+                    <HuePicker
+                      color={this.state.drawColor}
+                      onChange={this.handleColorPick}
+                    />
+                  </div>
+                  <div>
                     <label>Stroke Color</label>
                     <HuePicker
                       color={this.state.drawColor}
@@ -371,7 +376,7 @@ function Drawing({ rects, ghostRect, colors, widths, updateSelection }) {
               updateSelection={updateSelection}
             />
             {/* generate text if the box is fully formed (don't make text for an outline) */}
-            {(line.size > 1) && <text x={((Math.min(line.first().get("x"), line.last().get("x"))+Math.max(line.first().get("x"), line.last().get("x")))/2)} y={Math.min(line.first().get("y"), line.last().get("y")) + 15} className="rectangleText">{`Rectangle ${index}`}</text>}
+            {(line.size > 1) && <text x={((Math.min(line.first().get("x"), line.last().get("x"))+Math.max(line.first().get("x"), line.last().get("x")))/2)} y={Math.min(line.first().get("y"), line.last().get("y")) + 15} className="rectangleText" id={`text${index}`}>{`Rectangle ${index}`}</text>}
           </>
         ))}
 
