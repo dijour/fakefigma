@@ -14,6 +14,8 @@ class App extends Component {
       //outline of new rectangle, only used while mouseDown
       ghostRect: new List(),
       undoList: new List(),
+      selected: null,
+      mouseOffset: {},
       colors: new List(),
       undoColors: new List(),
       widths: new List(),
@@ -55,15 +57,21 @@ class App extends Component {
 
   // start drawing
   handleMouseDown = mouseEvent => {
-    if (!this.state.canDraw) return;
     const point = this.relativeCoordinatesForEvent(mouseEvent);
-    this.setState(prevState => ({
-      rects: prevState.rects.push(new List([point])),
-      ghostRect: prevState.rects.push(new List([point])),
-      isDrawing: true,
-      colors: this.state.colors.push(this.state.drawColor),
-      widths: this.state.widths.push(this.state.strokeWidth)
-    }));
+    if (this.state.canDraw) {
+      this.setState(prevState => ({
+        rects: prevState.rects.push(new List([point])),
+        ghostRect: prevState.rects.push(new List([point])),
+        isDrawing: true,
+        colors: this.state.colors.push(this.state.drawColor),
+        widths: this.state.widths.push(this.state.strokeWidth)
+      }));
+    }
+
+    else {
+      const point = this.relativeCoordinatesForEvent(mouseEvent);
+    }
+
   };
 
   handleTouchMove = touchEvent => {
@@ -82,10 +90,17 @@ class App extends Component {
 
   // keep building up line points
   handleMouseMove = mouseEvent => {
+    const point = this.relativeCoordinatesForEvent(mouseEvent);
+
+    if (this.state.selected && !this.state.canDraw && !this.state.isDrawing) {
+      console.log("selected is: ", this.state.selected)
+      this.state.selected.setAttribute("x", point.get('x')-this.state.offset.x)
+      this.state.selected.setAttribute("y", point.get('y')-this.state.offset.y)
+    }
+
     if (!this.state.isDrawing || !this.state.canDraw) {
       return;
     }
-    const point = this.relativeCoordinatesForEvent(mouseEvent);
     this.setState(
       prevState => ({
         ghostRect: prevState.rects.updateIn([prevState.rects.size - 1], line =>
@@ -96,6 +111,14 @@ class App extends Component {
 
   // end drawing
   handleMouseUp = mouseEvent => {
+
+    if (this.state.selected && !this.state.canDraw && !this.state.isDrawing) {
+      this.setState({
+        selected: null,
+        offset: {}
+      })
+    }
+
     if (!this.state.isDrawing || !this.state.canDraw) {
       return
     }
@@ -139,6 +162,18 @@ class App extends Component {
       x: mouseEvent.clientX - boundingRect.left,
       y: mouseEvent.clientY - boundingRect.top
     });
+  }
+
+  updateSelection = (e) => {
+    console.log(e.target)
+    let mouse = this.relativeCoordinatesForEvent(e);
+    let offset = {x: mouse.get('x'), y: mouse.get('y')}
+    offset.x -= parseFloat(e.target.getAttributeNS(null, "x"));
+    offset.y -= parseFloat(e.target.getAttributeNS(null, "y"));
+    this.setState({
+      selected: e.target,
+      offset: offset
+    }, () => this.state.selected.setAttribute("fill", "red"))
   }
 
   undo = () => {
@@ -239,74 +274,67 @@ class App extends Component {
   }
 
   render() {
-    const style = {
-      display: "flex",
-      justifyText: "center",
-      flexDirection: "column",
-      alignItems: "space-between",
-      padding: "40px 40px",
-      width: "70%",
-      border: "none",
-      borderRadius: "10px"
-    };
     return (
       <div>
           <div className="pageContainer">
             <h3 className="title">Draw some boxes!</h3>
-            <div className="buttonBox">
-              <button className="button" onClick={e => this.undo(e)}>
-                Undo
-              </button>
-              <button className="button" onClick={e => this.redo(e)}>
-                Redo
-              </button>
-              <button className="button" onClick={e => this.clear(e)}>
-                Clear
-              </button>
-              <button className="button" onClick={e => this.setState({canDraw: true})}>
-                Draw
-              </button>
-              <button className="button" onClick={e => this.setState({canDraw: false})}>
-                Grab
-              </button>
-            </div>
-            <div
-              className="drawArea"
-              id="drawArea"
-              ref="drawArea"
-              onMouseDown={this.handleMouseDown}
-              onTouchStart={this.handleTouchStart}
-              onMouseMove={this.handleMouseMove}
-              onTouchMove={this.handleTouchMove}
-            >
-              <Drawing
-                rects={this.state.rects}
-                ghostRect={this.state.ghostRect}
-                colors={this.state.colors}
-                widths={this.state.widths}
-                isDrawing={this.state.isDrawing}
-              />
-            </div>
-            <div className="effectContainerBox">
-              <div>
-                <label>Stroke Color</label>
-                <HuePicker
-                  color={this.state.drawColor}
-                  onChange={this.handleColorPick}
-                />
-              </div>
-              <div className="styles.slidecontainer">
-                <label>Stroke Thickness</label>
-                <input
-                  type="range"
-                  min="1"
-                  max="100"
-                  onChange={this.handleStrokeChange}
-                  value={this.state.strokeWidth}
-                  className="slider"
-                  id="myRange"
-                />
-              </div>
+            <div className="center">
+                <div
+                  className="drawArea"
+                  id="drawArea"
+                  ref="drawArea"
+                  onMouseDown={this.handleMouseDown}
+                  onTouchStart={this.handleTouchStart}
+                  onMouseMove={this.handleMouseMove}
+                  onTouchMove={this.handleTouchMove}
+                >
+                  <Drawing
+                    rects={this.state.rects}
+                    ghostRect={this.state.ghostRect}
+                    colors={this.state.colors}
+                    widths={this.state.widths}
+                    updateSelection={this.updateSelection}
+                    isDrawing={this.state.isDrawing}
+                  />
+                </div>
+                <div className="effectContainerBox">
+                  <div>
+                    <label>Stroke Color</label>
+                    <HuePicker
+                      color={this.state.drawColor}
+                      onChange={this.handleColorPick}
+                    />
+                  </div>
+                  <div className="styles.slidecontainer">
+                    <label>Stroke Thickness</label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="100"
+                      onChange={this.handleStrokeChange}
+                      value={this.state.strokeWidth}
+                      className="slider"
+                      id="myRange"
+                    />
+                  </div>
+                  <div className="buttonBox">
+                    <button className="button" onClick={e => this.undo(e)}>
+                      Undo
+                    </button>
+                    <button className="button" onClick={e => this.redo(e)}>
+                      Redo
+                    </button>
+                    <button className="button" onClick={e => this.clear(e)}>
+                      Clear
+                    </button>
+                    <button className="button" onClick={e => this.setState({canDraw: true})}>
+                      Draw
+                    </button>
+                    <button className="button" onClick={e => this.setState({canDraw: false})}>
+                      Grab
+                    </button>
+                  </div>
+                </div>
             </div>
           </div>
       </div>
@@ -314,11 +342,11 @@ class App extends Component {
   }
 }
 
-function Drawing({ rects, ghostRect, colors, widths, isDrawing }) {
+function Drawing({ rects, ghostRect, colors, widths, updateSelection }) {
+  console.log(rects.size)
   return (
     <svg className="drawing">
-      {isDrawing &&
-        
+      {ghostRect !== new List() &&
         ghostRect.map((line, index) => (
           <DrawingRect
             key={index}
@@ -327,25 +355,31 @@ function Drawing({ rects, ghostRect, colors, widths, isDrawing }) {
             color={"green"}
             type={"outline"}
             strokeWidth={widths.get(index)}
+            updateSelection={updateSelection}
           />
         ))
         }
         
         {rects.map((line, index) => (
-          <DrawingRect
-            key={index}
-            index={index}
-            line={line}
-            color={colors.get(index)}
-            strokeWidth={widths.get(index)}
-          />
+          <>
+            <DrawingRect
+              key={index}
+              index={index}
+              line={line}
+              color={colors.get(index)}
+              strokeWidth={widths.get(index)}
+              updateSelection={updateSelection}
+            />
+            {/* generate text if the box is fully formed (don't make text for an outline) */}
+            {(line.size > 1) && <text x={((Math.min(line.first().get("x"), line.last().get("x"))+Math.max(line.first().get("x"), line.last().get("x")))/2)} y={Math.min(line.first().get("y"), line.last().get("y")) + 15} className="rectangleText">{`Rectangle ${index}`}</text>}
+          </>
         ))}
 
     </svg>
   );
 }
 
-function DrawingRect({ index, line, color, strokeWidth, type }) {
+function DrawingRect({ index, line, color, strokeWidth, type, updateSelection }) {
   let firstX = Math.min(line.first().get("x"), line.last().get("x"))
   let firstY = Math.min(line.first().get("y"), line.last().get("y"))
   let lastX = Math.max(line.first().get("x"), line.last().get("x"))
@@ -354,9 +388,9 @@ function DrawingRect({ index, line, color, strokeWidth, type }) {
   // http://www.petercollingridge.co.uk/tutorials/svg/interactive/dragging/
   // Draggable code adapted from the above source.
   return (
-    <>
     <rect
       className="rect"
+      id={"rect"+index}
       x={firstX}
       y={firstY}
       width={lastX-firstX}
@@ -365,11 +399,10 @@ function DrawingRect({ index, line, color, strokeWidth, type }) {
       onLoad={dragListener}
       fillOpacity={type === "outline" ? 0 : 1}
       strokeDasharray={type === "outline" ? "5,5" : "0,0"}
+      onMouseDown={e => updateSelection(e)}
       onClick={e => console.log("clicked" + index)}
       style={{ stroke: `${color}`, strokeWidth: `${strokeWidth}` }}
     />
-    <text x={(firstX)} y={firstY + 15} font-family="Verdana" font-size="15" fill="white">{`Rectangle ${index}`}</text>
-    </>
   );
 }
 
