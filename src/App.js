@@ -27,6 +27,7 @@ class App extends Component {
       targetBoard: null,
       windowHeight: window.innerHeight,
       windowWidth: window.innerWidth,
+      rounded: 0,
       strokeWidth: 5,
       strokeColors: new List(),
       fillColors: new List(),
@@ -73,17 +74,7 @@ class App extends Component {
     const point = this.relativeCoordinatesForEvent(mouseEvent);
 
     if (this.state.selected && !this.state.canDraw && !this.state.isDrawing && this.state.canMove) {
-      console.log("selected is: ", this.state.selected)
-      // console.log(text)
-      // this.state.selected.setAttribute("x", point.get('x')-this.state.offset.x)
-      // this.state.selected.setAttribute("y", point.get('y')-this.state.offset.y)
-
-      console.log(parseInt(this.state.selected.id))
-
-    
-      // accidental left-resize function
       let index = parseInt(this.state.selected.id)
-
       let updatedRects = this.state.rects;
       updatedRects[index].selected = true
       updatedRects[index].startX = point.get('x')-this.state.offset.x
@@ -98,7 +89,6 @@ class App extends Component {
 
     if (this.state.selected && this.state.resizing !== []) {
       let index = parseInt(this.state.selected.id)
-
       let updatedRects = this.state.rects;
       updatedRects[index].selected = true
       if (this.state.resizing[0]) {updatedRects[index].startX = point.get('x')}
@@ -110,8 +100,6 @@ class App extends Component {
         rects: updatedRects
       })
     }
-    
-    // console.log(this.state.ghostRect.toJS())
 
     if (!this.state.isDrawing || !this.state.canDraw) {
       return;
@@ -125,7 +113,8 @@ class App extends Component {
   };
 
   // end drawing
-  handleMouseUp = mouseEvent => {
+  handleMouseUp = () => {
+    // if a rectangle is selected, we are not in draw mode, and we are not resizing the rectangle
     if (this.state.selected && !this.state.canDraw && !this.state.isDrawing && this.state.resizing === []) {
       let index = parseInt(this.state.selected.id)
       let updatedRects = this.state.rects;
@@ -138,14 +127,18 @@ class App extends Component {
       })
     }
 
+    // if we are resizing the rectangle, only wipe the resize rules, don't deselect the rectangle
     else if (this.state.resizing !== []) {
       this.setState({
         resizing: []
       })
     }
 
+    // if we didn't draw anything, then the ghost rectangle needs to be wiped
     if (!this.state.isDrawing || !this.state.canDraw || !this.state.ghostRect[1]) {
-      return
+      return this.setState({
+        ghostRect: []
+      })
     }
 
     let anchorPoint = this.state.ghostRect[0];
@@ -160,6 +153,7 @@ class App extends Component {
       });
     }
 
+    // new rectangle to be committed to state memory
     let newRect = {
       startX: anchorPoint.get('x'),
       startY: anchorPoint.get('y'),
@@ -167,7 +161,8 @@ class App extends Component {
       endY: finalPoint.get('y'),
       strokeColor: this.state.strokeColor,
       fillColor: this.state.fillColor,
-      strokeWidth: this.state.strokeWidth
+      strokeWidth: this.state.strokeWidth,
+      rounded: this.state.rounded
     }
 
     let updatedRects = this.state.rects;
@@ -183,6 +178,7 @@ class App extends Component {
       }), () => console.log(this.state.rects));
   };
 
+  // generic handle change utility function
   handleChange = e => {
     this.setState({ [e.target.name]: e.target.value });
   };
@@ -196,7 +192,8 @@ class App extends Component {
     });
   }
 
-  updateSelection = (e) => {
+  //
+  moveSelection = (e) => {
     if (this.state.canDraw || this.state.isDrawing) {
       return
     }
@@ -207,6 +204,7 @@ class App extends Component {
         updatedRects[i].selected = false
       }
     }
+
     let mouse = this.relativeCoordinatesForEvent(e);
     let offset = {x: mouse.get('x'), y: mouse.get('y')}
     offset.x -= parseFloat(e.target.getAttributeNS(null, "x"));
@@ -237,20 +235,17 @@ class App extends Component {
       canMove: false,
       rects: updatedRects
     })
-    // console.log(e.target)
-    // e.target.setAttribute("fill", "rgb(255, 0, 0")
   }
 
   deselectElement = (e) => {
-    console.log(e.target)
-    if (!this.state.drawing && !this.state.canDraw && this.state.selected && e.target.class === "drawing") {
-      console.log("deselecting!")
+    if (!this.state.drawing && !this.state.canDraw && this.state.selected && e.target.classList[0] === "drawing" && this.state.resizing !== []) {
       let updatedRects = this.state.rects;
-      let index = parseInt(e.target.id)
+      let index = parseInt(this.state.selected.id)
       updatedRects[index].selected = false
 
       this.setState({
         selected: null,
+        resizing: [],
         rects: updatedRects
       })
     } 
@@ -331,6 +326,14 @@ class App extends Component {
   }
 
   handleColorPick = (color, type) => {
+    if (this.state.selected) {
+      let index = parseInt(this.state.selected.id)
+      let updatedRects = this.state.rects;
+      updatedRects[index][`${type}Color`] = color.hex
+      this.setState({
+        rects: updatedRects
+      })
+    }
     this.setState({[`${type}Color`]: color.hex})
   };
 
@@ -350,6 +353,18 @@ class App extends Component {
       })
     }
     this.setState({ strokeWidth: event.target.value });
+  };
+
+  handleRoundedChange = event => {
+    if (this.state.selected) {
+      let index = parseInt(this.state.selected.id)
+      let updatedRects = this.state.rects;
+      updatedRects[index].rounded = event.target.value
+      this.setState({
+        rects: updatedRects
+      })
+    }
+    this.setState({ rounded: event.target.value });
   };
 
   // need this to accurately report dimensions
@@ -384,7 +399,6 @@ class App extends Component {
     return (
       <div>
           <div className="pageContainer">
-            <h3 className="title">Draw some boxes!</h3>
             <div className="center">
                 <div
                   className="drawArea"
@@ -404,7 +418,7 @@ class App extends Component {
                     fillColors={this.state.fillColors}
                     strokeColors={this.state.strokeColors}
                     widths={this.state.widths}
-                    updateSelection={this.updateSelection}
+                    moveSelection={this.moveSelection}
                     setActiveRect={this.setActiveRect}
                     selected={this.state.selected}
                     isDrawing={this.state.isDrawing}
@@ -412,21 +426,44 @@ class App extends Component {
                   />
                 </div>
                 <div className="effectContainerBox">
+                  <div className="buttonBox">
+                      <button className="button" style={{'background': `${this.state.canDraw ? `lightblue` : `white`}`}} onClick={e => this.setState({canDraw: true, selected: null})}>
+                        Draw
+                      </button>
+                      <button className="button" style={{'background': `${this.state.canDraw ? `white` : `lightblue`}`}} onClick={e => this.setState({canDraw: false})}>
+                        Grab
+                      </button>
+                      <button className="button" onClick={e => this.undo(e)}>
+                        Undo
+                      </button>
+                      <button className="button" onClick={e => this.redo(e)}>
+                        Redo
+                      </button>
+                      <button className="button" onClick={e => this.clear(e)}>
+                        Clear
+                      </button>
+                      { this.state.selected && 
+                        <button className="button" onClick={e => this.delete(e)}>
+                          Delete
+                        </button>
+                      }
+                    </div>
                   <div>
                     <label>Fill Color</label>
                     <HuePicker
-                      color={this.state.fillColor}
+                      color={this.state.selected ? this.state.rects[parseInt(this.state.selected.id)].fillColor : this.state.fillColor}
                       onChange={e => this.handleColorPick(e, "fill")}
                     />
                   </div>
                   <div>
                     <label>Stroke Color</label>
                     <HuePicker
-                      color={this.state.strokeColor}
+                      // color={this.state.strokeColor}
+                      color={this.state.selected ? this.state.rects[parseInt(this.state.selected.id)].strokeColor : this.state.strokeColor}
                       onChange={e => this.handleColorPick(e, "stroke")}
                     />
                   </div>
-                  <div className="styles.slidecontainer">
+                  <div className="slidecontainer">
                     <label>Stroke Thickness</label>
                     <input
                       type="range"
@@ -438,27 +475,17 @@ class App extends Component {
                       id="myRange"
                     />
                   </div>
-                  <div className="buttonBox">
-                    <button className="button" onClick={e => this.undo(e)}>
-                      Undo
-                    </button>
-                    <button className="button" onClick={e => this.redo(e)}>
-                      Redo
-                    </button>
-                    <button className="button" onClick={e => this.clear(e)}>
-                      Clear
-                    </button>
-                    <button className="button" onClick={e => this.setState({canDraw: true, selected: null})}>
-                      Draw
-                    </button>
-                    <button className="button" onClick={e => this.setState({canDraw: false})}>
-                      Grab
-                    </button>
-                    { this.state.selected && 
-                      <button className="button" onClick={e => this.delete(e)}>
-                        Delete
-                      </button>
-                    }
+                  <div className="slidecontainer">
+                    <label>Stroke Roundness</label>
+                    <input
+                      type="range"
+                      min="1"
+                      max="200"
+                      onChange={this.handleRoundedChange}
+                      value={this.state.selected ? this.state.rects[parseInt(this.state.selected.id)].rounded : this.state.rounded}
+                      className="slider"
+                      id="myRange"
+                    />
                   </div>
                 </div>
             </div>
@@ -468,7 +495,7 @@ class App extends Component {
   }
 }
 
-function Drawing({ rects, ghostRect, strokeColors, fillColors, widths, updateSelection, setActiveRect, resize }) {
+function Drawing({ rects, ghostRect, strokeColors, fillColors, widths, moveSelection, setActiveRect, resize }) {
   if (!strokeColors || !fillColors) {
     return <div></div>;
   }
@@ -486,7 +513,7 @@ function Drawing({ rects, ghostRect, strokeColors, fillColors, widths, updateSel
             key={index}
             index={index}
             rect={rect}
-            updateSelection={updateSelection}
+            moveSelection={moveSelection}
             setActiveRect={setActiveRect}
             resize={resize}
           />
@@ -506,7 +533,7 @@ function Drawing({ rects, ghostRect, strokeColors, fillColors, widths, updateSel
   );
 }
 
-function DrawingRect({ index, rect, updateSelection, setActiveRect, resize }) {
+function DrawingRect({ index, rect, moveSelection, setActiveRect, resize }) {
   if (isEmpty(rect)) {
     return <div></div>
   }
@@ -527,11 +554,13 @@ function DrawingRect({ index, rect, updateSelection, setActiveRect, resize }) {
       key={"rect"+index}
       x={firstX}
       y={firstY}
+      rx={rect.rounded}
+      ry={rect.rounded}
       width={lastX-firstX}
       height={lastY-firstY}
       fillOpacity={1}
       strokeDasharray={"0,0"}
-      onMouseDown={e => updateSelection(e)}
+      onMouseDown={e => moveSelection(e)}
       onClick={e => setActiveRect(e)}
       style={{ stroke: `${rect.strokeColor}`, fill: `${rect.fillColor}`, strokeWidth: `${rect.strokeWidth}` }}
     />
@@ -599,7 +628,7 @@ function GhostRect({ rect }) {
         draggable="true"
         fillOpacity={0}
         strokeDasharray={"5,5"}
-        // onMouseDown={e => updateSelection(e)}
+        // onMouseDown={e => moveSelection(e)}
         // onClick={e => setActiveRect(e)}
         style={{ stroke: `green`, fill: `none`, strokeWidth: `4` }}
       />
