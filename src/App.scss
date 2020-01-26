@@ -27,7 +27,6 @@
   .center {
     width: 100%;
     display: flex;
-
   }
 
   .effectContainerBox {
@@ -61,33 +60,38 @@
           justify-content: center;
       } 
   }
-  
-  & .path {
-      fill: none;
-      stroke-width: 1px;
-      stroke: black;
-      stroke-linejoin: round;
-      stroke-linecap: round;
-  }
+
+  .dragBox {
+    width: 8px;
+    height: 8px;
+    fill: white;
+    stroke: black;
+    z-index: 1001;
+    cursor: pointer;
+
+        &:hover {
+            fill: blue;
+        }
+
+        &.selected {
+            fill: blue;
+        }
+
+    }
 
   rect {
-    z-index: 1000;
+    z-index: 999;
     cursor: move;
     display: flex;
-
-    & .highlighted {
-        border: 2px solid yellow;
-    }
   }
 
   .rectangleText {
     touch-action: none;
     pointer-events: none;
     text-anchor: middle;
-    fill: white;
+    fill: black;
+    user-select: none;
   }
-
-
   
   .drawing {
       width: 100%;

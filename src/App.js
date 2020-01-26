@@ -23,6 +23,7 @@ class App extends Component {
       canDraw: true,
       //can the selected element be moved?
       canMove: true,
+      resizing: [],
       targetBoard: null,
       windowHeight: window.innerHeight,
       windowWidth: window.innerWidth,
@@ -30,7 +31,7 @@ class App extends Component {
       strokeColors: new List(),
       fillColors: new List(),
       strokeColor: "#000000",
-      fillColor: "#000000"
+      fillColor: "#FFFFFF"
     };
   }
 
@@ -39,10 +40,7 @@ class App extends Component {
     const point = this.relativeCoordinatesForEvent(touchEvent.touches[0]);
     this.setState(prevState => ({
       ghostRect: [point],
-      isDrawing: true,
-      // strokeColors: this.state.strokeColors.push(this.state.strokeColor),
-      // fillColors: this.state.fillColors.push(this.state.fillColor),
-      // widths: this.state.widths.push(this.state.strokeWidth)
+      isDrawing: true
     }));
   }
 
@@ -50,15 +48,10 @@ class App extends Component {
   handleMouseDown = mouseEvent => {
     if (this.state.canDraw) {
       const point = this.relativeCoordinatesForEvent(mouseEvent);
-      this.setState(prevState => ({
-        // rects: prevState.rects.push(new List([point])),
-        // rects: prevState.rects.push(newRect),
+      this.setState({
         ghostRect: [point],
         isDrawing: true,
-        // strokeColors: this.state.strokeColors.push(this.state.strokeColor),
-        // fillColors: this.state.fillColors.push(this.state.fillColor),
-        // widths: this.state.widths.push(this.state.strokeWidth)
-      }), () => console.log(this.state.ghostRect));
+      });
     }
   };
 
@@ -87,8 +80,7 @@ class App extends Component {
 
       console.log(parseInt(this.state.selected.id))
 
-      
-
+    
       // accidental left-resize function
       let index = parseInt(this.state.selected.id)
 
@@ -99,6 +91,21 @@ class App extends Component {
       updatedRects[index].endX = point.get('x')-this.state.offset.x+parseInt(this.state.selected.getAttribute("width"))
       updatedRects[index].endY = point.get('y')-this.state.offset.y+parseInt(this.state.selected.getAttribute("height"))
 
+      this.setState({
+        rects: updatedRects
+      })
+    }
+
+    if (this.state.selected && this.state.resizing !== []) {
+      let index = parseInt(this.state.selected.id)
+
+      let updatedRects = this.state.rects;
+      updatedRects[index].selected = true
+      if (this.state.resizing[0]) {updatedRects[index].startX = point.get('x')}
+      if (this.state.resizing[1]) {updatedRects[index].startY = point.get('y')} 
+      if (this.state.resizing[2]) {updatedRects[index].endX = point.get('x')}    
+      if (this.state.resizing[3]) {updatedRects[index].endY = point.get('y')}
+  
       this.setState({
         rects: updatedRects
       })
@@ -114,12 +121,12 @@ class App extends Component {
     newGhostRect[1] = point;
     this.setState({
       ghostRect: newGhostRect
-    }, () => console.log(this.state.ghostRect));
+    });
   };
 
   // end drawing
   handleMouseUp = mouseEvent => {
-    if (this.state.selected && !this.state.canDraw && !this.state.isDrawing) {
+    if (this.state.selected && !this.state.canDraw && !this.state.isDrawing && this.state.resizing === []) {
       let index = parseInt(this.state.selected.id)
       let updatedRects = this.state.rects;
       updatedRects[index].selected = false
@@ -128,6 +135,12 @@ class App extends Component {
         selected: null,
         rects: updatedRects,
         offset: {}
+      })
+    }
+
+    else if (this.state.resizing !== []) {
+      this.setState({
+        resizing: []
       })
     }
 
@@ -165,7 +178,8 @@ class App extends Component {
       prevState => ({
         ghostRect: [],
         isDrawing: false,
-        rects: updatedRects
+        rects: updatedRects,
+        resizing: [],
       }), () => console.log(this.state.rects));
   };
 
@@ -183,6 +197,16 @@ class App extends Component {
   }
 
   updateSelection = (e) => {
+    if (this.state.canDraw || this.state.isDrawing) {
+      return
+    }
+
+    let updatedRects = this.state.rects;
+    for (let i in updatedRects) {
+      if (updatedRects[i].selected) {
+        updatedRects[i].selected = false
+      }
+    }
     let mouse = this.relativeCoordinatesForEvent(e);
     let offset = {x: mouse.get('x'), y: mouse.get('y')}
     offset.x -= parseFloat(e.target.getAttributeNS(null, "x"));
@@ -195,8 +219,18 @@ class App extends Component {
   }
 
   setActiveRect = (e) => {
-    let index = parseInt(e.target.id)
+    if (this.state.canDraw || this.state.isDrawing) {
+      return
+    }
+
     let updatedRects = this.state.rects;
+    for (let i in updatedRects) {
+      if (updatedRects[i].selected) {
+        updatedRects[i].selected = false
+      }
+    }
+
+    let index = parseInt(e.target.id)
     updatedRects[index].selected = true
     this.setState({
       selected: e.target,
@@ -208,9 +242,16 @@ class App extends Component {
   }
 
   deselectElement = (e) => {
-    if (!this.state.drawing && !this.state.canDraw && this.state.selected) {
+    console.log(e.target)
+    if (!this.state.drawing && !this.state.canDraw && this.state.selected && e.target.class === "drawing") {
+      console.log("deselecting!")
+      let updatedRects = this.state.rects;
+      let index = parseInt(e.target.id)
+      updatedRects[index].selected = false
+
       this.setState({
-        selected: null
+        selected: null,
+        rects: updatedRects
       })
     } 
   }
@@ -279,9 +320,25 @@ class App extends Component {
     );
   };
 
+  delete = () => {
+    let index = parseInt(this.state.selected.id)
+    let updatedRects = this.state.rects;
+    updatedRects[index] = {}
+    this.setState({
+      selected: null,
+      rects: updatedRects
+    })
+  }
+
   handleColorPick = (color, type) => {
     this.setState({[`${type}Color`]: color.hex})
   };
+
+  resize = (e, startX, startY, endX, endY) => {
+    this.setState({
+      resizing: [startX, startY, endX, endY]
+    })
+  }
 
   handleStrokeChange = event => {
     if (this.state.selected) {
@@ -331,6 +388,7 @@ class App extends Component {
             <div className="center">
                 <div
                   className="drawArea"
+                  style={this.state.canDraw ? {'cursor': 'crosshair'} : {'cursor': 'default'}}
                   id="drawArea"
                   ref="drawArea"
                   onMouseDown={this.handleMouseDown}
@@ -340,6 +398,7 @@ class App extends Component {
                   onClick={e => this.deselectElement(e)}
                 >
                   <Drawing
+                    key="drawing"
                     rects={this.state.rects}
                     ghostRect={this.state.ghostRect}
                     fillColors={this.state.fillColors}
@@ -349,6 +408,7 @@ class App extends Component {
                     setActiveRect={this.setActiveRect}
                     selected={this.state.selected}
                     isDrawing={this.state.isDrawing}
+                    resize={this.resize}
                   />
                 </div>
                 <div className="effectContainerBox">
@@ -373,7 +433,7 @@ class App extends Component {
                       min="1"
                       max="100"
                       onChange={this.handleStrokeChange}
-                      value={this.state.strokeWidth}
+                      value={this.state.selected ? this.state.rects[parseInt(this.state.selected.id)].strokeWidth : this.state.strokeWidth}
                       className="slider"
                       id="myRange"
                     />
@@ -388,12 +448,17 @@ class App extends Component {
                     <button className="button" onClick={e => this.clear(e)}>
                       Clear
                     </button>
-                    <button className="button" onClick={e => this.setState({canDraw: true})}>
+                    <button className="button" onClick={e => this.setState({canDraw: true, selected: null})}>
                       Draw
                     </button>
                     <button className="button" onClick={e => this.setState({canDraw: false})}>
                       Grab
                     </button>
+                    { this.state.selected && 
+                      <button className="button" onClick={e => this.delete(e)}>
+                        Delete
+                      </button>
+                    }
                   </div>
                 </div>
             </div>
@@ -403,14 +468,10 @@ class App extends Component {
   }
 }
 
-function Drawing({ rects, ghostRect, strokeColors, fillColors, widths, updateSelection, setActiveRect, selected }) {
+function Drawing({ rects, ghostRect, strokeColors, fillColors, widths, updateSelection, setActiveRect, resize }) {
   if (!strokeColors || !fillColors) {
     return <div></div>;
   }
-  if (ghostRect.length > 0) {
-    console.log(ghostRect[0].get('x'))
-  }
-
   return (
     <svg className="drawing">
       {ghostRect !== [] &&
@@ -427,12 +488,13 @@ function Drawing({ rects, ghostRect, strokeColors, fillColors, widths, updateSel
             rect={rect}
             updateSelection={updateSelection}
             setActiveRect={setActiveRect}
+            resize={resize}
           />
           {/* generate text if the box is fully formed (don't make text for an outline) */}
           {
-            (rect !== {} ) && <text 
+            (!isEmpty(rect)) && <text 
               x={((Math.min(rect.startX, rect.endX)+Math.max(rect.startX, rect.endX))/2)} 
-              y={Math.min(rect.startY, rect.endY) + 15} 
+              y={Math.min(rect.startY, rect.endY) + 15 + rect.strokeWidth} 
               className="rectangleText" 
               id={`text${index}`}>
                 {`Rectangle ${index}`}
@@ -440,20 +502,25 @@ function Drawing({ rects, ghostRect, strokeColors, fillColors, widths, updateSel
           }
         </>
       ))}
-        
-
-
     </svg>
   );
 }
 
-function DrawingRect({ index, rect, updateSelection, setActiveRect }) {
+function DrawingRect({ index, rect, updateSelection, setActiveRect, resize }) {
+  if (isEmpty(rect)) {
+    return <div></div>
+  }
+
   let firstX = Math.min(rect.startX, rect.endX)
   let firstY = Math.min(rect.startY, rect.endY)
   let lastX = Math.max(rect.startX, rect.endX)
   let lastY = Math.max(rect.startY, rect.endY)
 
   return (
+    <>
+    {rect.selected &&
+        <DragBoxes rect={rect} resize={resize}/>
+    }
     <rect
       className="rect"
       id={index}
@@ -466,8 +533,49 @@ function DrawingRect({ index, rect, updateSelection, setActiveRect }) {
       strokeDasharray={"0,0"}
       onMouseDown={e => updateSelection(e)}
       onClick={e => setActiveRect(e)}
-      style={{ stroke: `${rect.strokeColor}`, fill: `${rect.selected ? "red" : rect.fillColor}`, strokeWidth: `${rect.strokeWidth}` }}
+      style={{ stroke: `${rect.strokeColor}`, fill: `${rect.fillColor}`, strokeWidth: `${rect.strokeWidth}` }}
     />
+    </>
+  );
+}
+
+function DragBoxes({ rect, resize }) {
+  if (isEmpty(rect)) {
+    return <div></div>
+  }
+
+  let firstX = Math.min(rect.startX, rect.endX)
+  let firstY = Math.min(rect.startY, rect.endY)
+  let lastX = Math.max(rect.startX, rect.endX)
+  let lastY = Math.max(rect.startY, rect.endY)
+
+  return (
+    <>
+      <rect
+        className="dragBox" id="dragBox1" key={"dragBox1"} x={firstX-10-rect.strokeWidth} y={firstY-10-rect.strokeWidth} onMouseDown={e => resize(e, true, true, false, false)}
+      />
+      <rect
+        className="dragBox" id="dragBox2" key={"dragBox2"} x={(firstX+lastX)/2} y={firstY-10-rect.strokeWidth} onMouseDown={e => resize(e, false, true, false, false)}
+      />
+      <rect
+        className="dragBox" id="dragBox3" key={"dragBox3"} x={lastX+5+rect.strokeWidth} y={firstY-10-rect.strokeWidth} onMouseDown={e => resize(e, false, true, true, false)}
+      />
+      <rect
+        className="dragBox" id="dragBox4" key={"dragBox4"} x={lastX+5+rect.strokeWidth} y={(lastY+firstY)/2} onMouseDown={e => resize(e, false, false, true, false)}
+      />
+      <rect
+        className="dragBox" id="dragBox5" key={"dragBox5"} x={lastX+5+rect.strokeWidth} y={lastY+5+rect.strokeWidth} onMouseDown={e => resize(e, false, false, true, true)}
+      />
+      <rect
+        className="dragBox" id="dragBox6" key={"dragBox6"} x={(firstX+lastX)/2} y={lastY+5+rect.strokeWidth} onMouseDown={e => resize(e, false, false, false, true)}
+      />
+      <rect
+        className="dragBox" id="dragBox7" key={"dragBox7"} x={firstX-10-rect.strokeWidth} y={lastY+5+rect.strokeWidth} onMouseDown={e => resize(e, true, false, false, true)}
+      />
+      <rect
+        className="dragBox" id="dragBox8" key={"dragBox8"} x={firstX-10-rect.strokeWidth} y={(firstY+lastY)/2} onMouseDown={e => resize(e, true, false, false, false)}
+      />
+    </>
   );
 }
 
@@ -500,6 +608,16 @@ function GhostRect({ rect }) {
 
   return <div></div>
 
+}
+
+
+//utility function - check if object is empty
+function isEmpty(obj) {
+  for (let key in obj) {
+    if (obj.hasOwnProperty(key))
+      return false;
+  }
+  return true;
 }
 
 export default App;
