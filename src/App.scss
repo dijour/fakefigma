@@ -1,6 +1,10 @@
 html, * {
-    font-family: Avenir
+    font-family: Avenir;
 }
+
+*, *::before, *::after {
+    box-sizing: border-box;
+  }
 
 .pageContainer {
   display: flex;
@@ -34,6 +38,7 @@ html, * {
   }
 
   .effectContainerBox {
+      width: max-content;
       display: flex;
       flex-direction: column;
       justify-content: space-around;
@@ -44,43 +49,33 @@ html, * {
       box-shadow: 0px 0px 5px 1px;
       border-radius: 0px 10px 10px 0px;
 
-      /* Small devices (portrait tablets and large phones, 600px and up) */
-      @media only screen and (max-width: 600px) {
-          flex-direction: column;
-          justify-content: center;
-      } 
-
       .slidecontainer {
           width: 100%;
           display: flex;
           justify-content: left;
           flex-direction: column;
       }
-
   }
 
   & .buttonBox {
+      width: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
       flex-wrap: wrap;
       flex-direction: row;
 
-      button {
-        background: white;
+      .button {
+        background: lightgrey;
         width: 50px;
-        height: 20px;
+        height: 40px;
         border-radius: 10%;
-        &.selected {
-            background: blue;
-        }
-        &:nth-of-type(1) {
-            height: 30px;
-        }
-        &:nth-of-type(2) {
-            height: 30px;
-            margin-right: 10px;
-        }
+      }
+
+      .buttonBig {
+        width: 150px;
+        height: 50px;
+        font-size: 20px;
       }
 
       /* Small devices (portrait tablets and large phones, 600px and up) */

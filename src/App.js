@@ -175,7 +175,7 @@ class App extends Component {
         isDrawing: false,
         rects: updatedRects,
         resizing: [],
-      }), () => console.log(this.state.rects));
+      }));
   };
 
   // generic handle change utility function
@@ -256,12 +256,11 @@ class App extends Component {
       return;
     }
 
-    console.log(this.state.rects[this.state.rects.length-1])
     this.setState(
       prevState => ({
         undoList: prevState.undoList.push(this.state.rects[this.state.rects.length-1]),
         rects: prevState.rects.slice(0,-1),
-      }),  () => console.log(this.state.undoList.toJS())
+      })
     );
   };
 
@@ -271,7 +270,6 @@ class App extends Component {
     }
     let updatedRects = this.state.rects;
     updatedRects.push(this.state.undoList.last())
-    console.log(updatedRects)
     this.setState(prevState => ({
       rects: updatedRects,
       undoList: prevState.undoList.delete(-1),
@@ -427,27 +425,29 @@ class App extends Component {
                 </div>
                 <div className="effectContainerBox">
                   <div className="buttonBox">
-                      <button className="button" style={{'background': `${this.state.canDraw ? `lightblue` : `white`}`}} onClick={e => this.setState({canDraw: true, selected: null})}>
-                        Draw
+                    <button className="buttonBig" style={{'background': `${this.state.canDraw ? `lightblue` : `white`}`}} onClick={e => this.setState({canDraw: true, selected: null})}>
+                      Draw
+                    </button>
+                    <button className="buttonBig" style={{'background': `${this.state.canDraw ? `white` : `lightblue`}`}} onClick={e => this.setState({canDraw: false})}>
+                      Grab
+                    </button>
+                  </div>
+                  <div className="buttonBox">
+                    <button className="button" onClick={e => this.undo(e)}>
+                      Undo
+                    </button>
+                    <button className="button" onClick={e => this.redo(e)}>
+                      Redo
+                    </button>
+                    <button className="button" onClick={e => this.clear(e)}>
+                      Clear
+                    </button>
+                    { this.state.selected && 
+                      <button className="button" onClick={e => this.delete(e)}>
+                        Delete
                       </button>
-                      <button className="button" style={{'background': `${this.state.canDraw ? `white` : `lightblue`}`}} onClick={e => this.setState({canDraw: false})}>
-                        Grab
-                      </button>
-                      <button className="button" onClick={e => this.undo(e)}>
-                        Undo
-                      </button>
-                      <button className="button" onClick={e => this.redo(e)}>
-                        Redo
-                      </button>
-                      <button className="button" onClick={e => this.clear(e)}>
-                        Clear
-                      </button>
-                      { this.state.selected && 
-                        <button className="button" onClick={e => this.delete(e)}>
-                          Delete
-                        </button>
-                      }
-                    </div>
+                    }
+                  </div>
                   <div>
                     <label>Fill Color</label>
                     <HuePicker
