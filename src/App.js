@@ -1,7 +1,7 @@
-import React, { Component, useState, useEffect, useRef } from "react";
+import React, { Component } from "react";
 import "./App.scss";
 // import styles from "./draw.module.scss";
-import { List, Map, update } from "immutable";
+import { List, Map } from "immutable";
 import { HuePicker } from "react-color";
 
 // preliminary code thanks to: https://codepen.io/philipp-spiess/pen/WpQpGr
@@ -634,9 +634,7 @@ function GhostRect({ rect }) {
       />
     );
   }
-
   return <div></div>
-
 }
 
 

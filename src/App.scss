@@ -77,11 +77,6 @@ html, * {
         height: 50px;
         font-size: 20px;
       }
-
-      /* Small devices (portrait tablets and large phones, 600px and up) */
-      @media only screen and (max-width: 600px) {
-          justify-content: center;
-      } 
   }
 
   .dragBox {
@@ -95,11 +90,6 @@ html, * {
         &:hover {
             fill: blue;
         }
-
-        &.selected {
-            fill: blue;
-        }
-
     }
 
   rect {
